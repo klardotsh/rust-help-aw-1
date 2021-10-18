@@ -1,33 +1,35 @@
 use std::fs::File;
 use std::io::{self, BufRead};
-use std::path::Path;
 
 // Parse very simple configuration files of the form key=value
 
-fn main() -> std::io::Result<()> {
+// don't use io::Result here, just use the standard Result
+fn main() -> Result<(), String> {
     let filename = "test.ini";
-    let file = File::open(filename)?;
+    let file = File::open(filename).map_err(|e| e.to_string())?;
     for l in io::BufReader::new(file).lines() {
-        let line = l?;
-        if line.len() == 0 {
+        let line = l.map_err(|e| e.to_string())?;
+        if line.is_empty() {
             continue;
         }
-        if let Some(i) = line.find('=') {
-            let key = &line[..i];
-            let value = &line[i + 1..];
-            match key {
-                "foo" => {
-                    let foo = value;
-                    println!("{}", foo);
-                }
-                _ => {}
+        // this is actually the example from the stdlib
+        // https://doc.rust-lang.org/std/primitive.str.html#method.split_once
+        let (key, val) = line
+            .split_once('=')
+            .ok_or_else(|| "invalid config".to_string())?;
+
+        // clippy complains here but let's just assume we wanted to match more stuff, so don't
+        // remove the match
+        #[allow(clippy::single_match)]
+        match key {
+            "foo" => {
+                #[allow(clippy::blacklisted_name)]
+                let foo = val;
+                println!("{}", foo);
             }
-            // Debug line
-        } else {
-            // Replace with whatever you want to do on malformed config lines
-            panic!("Invalid config")
+            _ => {}
         }
+        // Debug line
     }
     Ok(())
 }
-
